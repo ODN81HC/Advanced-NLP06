@@ -40,15 +40,14 @@ def run():
     subprocess.run(
         [
             "python", "main.py",
-            "--T", "5",
+            "--T", "7",
             "--dataset", "local_financial_qa",
             "--output-dir", "/runs/exp_self",
-            "--train-size", "200",
-            "--dev-size", "240",
+            "--train-size", "300",
+            "--dev-size", "584",
             "--model", "QuantTrio/Qwen3.5-4B-AWQ",
             "--gpu-memory-utilization", "0.7",
             "--progressive-reflections",
-            "--use-curriculum",
             "--afo-mode", "best",
         ],
         check=True,
@@ -85,6 +84,12 @@ def run():
         with open(proof_path, "w", encoding="utf-8") as f:
             json.dump(proof_data, f, ensure_ascii=False, indent=2)
         print(f"Generated evolution proof in volume: {proof_path}")
+
+        # Save best strategy as iter_best_strategy.json for convenient submission
+        if best_strategy:
+            best_strat_path = Path("/runs/exp_self/iter_best_strategy.json")
+            best_strat_path.write_text(best_strategy.to_json(), encoding="utf-8")
+            print(f"Saved best strategy (iter {best_strategy.metadata.iteration}, acc={best_acc:.3f}) to: {best_strat_path}")
     else:
         print("Error: history.jsonl not found. Cannot generate evolution proof.")
         
@@ -275,7 +280,8 @@ def smoke():
     gpu="A10G",
     cpu=4,
     memory=16384,
-    timeout=3600,
+    timeout=7200,
+    retries=1,
     secrets=[modal.Secret.from_name("huggingface")],
     volumes={"/runs": volume},
 )
@@ -290,6 +296,7 @@ def run_submit(strategy_path: str, output_file: str = "/runs/submission.csv", li
         "--output-file", output_file,
         "--model", "QuantTrio/Qwen3.5-4B-AWQ",
         "--gpu-memory-utilization", "0.7",
+        "--num-samples", "5",
     ]
     if limit is not None:
         cmd.extend(["--limit", str(limit)])
